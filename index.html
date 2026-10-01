@@ -1,0 +1,1202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Verbs Journey</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+            color: #1f2937;
+            overflow-x: hidden;
+        }
+
+        .stage-container {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .stage-container.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .card {
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.2s, box-shadow 0.2s;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: #3b82f6; /* Blue border on hover */
+        }
+
+        .btn {
+            background-color: #3b82f6;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 9999px;
+            font-weight: 700;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn:hover {
+            background-color: #2563eb;
+            transform: scale(1.05);
+        }
+        
+        .btn:disabled {
+            background-color: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Stage 3 Canvas */
+        #matchCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* Let clicks pass through to items */
+            z-index: 10;
+        }
+        
+        .match-item {
+            z-index: 20;
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.75rem;
+            padding: 1rem;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.25rem;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .match-item.selected {
+            border-color: #3b82f6;
+            background-color: #eff6ff;
+            transform: scale(1.05);
+        }
+
+        .match-item.matched {
+            border-color: #10b981;
+            background-color: #ecfdf5;
+            color: #059669;
+            cursor: default;
+            opacity: 0.8;
+        }
+
+        /* Stage 4 Options */
+        .option-btn {
+            width: 100%;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 0.75rem;
+            border: 2px solid #e5e7eb;
+            background-color: white;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover:not(:disabled) {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+        }
+
+        .option-btn.correct {
+            background-color: #d1fae5;
+            border-color: #10b981;
+            color: #065f46;
+        }
+
+        .option-btn.wrong {
+            background-color: #fee2e2;
+            border-color: #ef4444;
+            color: #991b1b;
+        }
+
+        /* Progress Bar */
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #10b981;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* Header Tabs */
+        .nav-tab {
+            padding: 0.5rem 1rem;
+            border-radius: 9999px;
+            font-weight: 600;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-tab.active {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .nav-tab.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <header class="bg-white shadow-sm p-4 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl font-extrabold text-blue-600 flex items-center gap-2">
+                <span class="text-3xl">🚀</span> Verb Explorer
+            </h1>
+            <nav class="flex flex-wrap justify-center gap-2">
+                <button class="nav-tab active" onclick="app.goToStage(1)">Stage 1</button>
+                <button class="nav-tab" onclick="app.goToStage(2)">Stage 2</button>
+                <button class="nav-tab" onclick="app.goToStage(3)">Stage 3</button>
+                <button class="nav-tab" onclick="app.goToStage(4)">Stage 4</button>
+                <button class="nav-tab" onclick="app.goToStage(5)">Stage 5</button>
+                <button class="nav-tab" onclick="app.goToStage(6)">Stage 6</button>
+                <button class="nav-tab" onclick="app.goToStage(7)">Stage 7</button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex-grow p-4 max-w-4xl mx-auto w-full">
+        <section id="stage1" class="stage-container active">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 1: 만나보기 (Present Tense)</h2>
+                <p class="text-gray-600 text-lg">단어를 클릭하여 발음을 듣고 의미를 상상해 보세요.</p>
+            </div>
+            
+            <div id="stage1-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 w-full">
+                <!-- Dynamically populated -->
+            </div>
+            
+            <div class="mt-8">
+                <button class="btn text-lg" onclick="app.goToStage(2)">다음 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage2" class="stage-container">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 2: 변신하기 (Past Tense)</h2>
+                <p class="text-gray-600 text-lg">현재형 동사가 과거형으로 어떻게 변하는지 확인하고 클릭해서 들어보세요.</p>
+            </div>
+
+            <div class="w-full flex flex-col gap-8">
+                <div class="bg-blue-50 p-6 rounded-2xl">
+                    <h3 class="text-2xl font-bold text-blue-800 mb-4 border-b-2 border-blue-200 pb-2">규칙 동사 (Regular Verbs: -ed)</h3>
+                    <div id="stage2-regular-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+
+                <div class="bg-purple-50 p-6 rounded-2xl">
+                    <h3 class="text-2xl font-bold text-purple-800 mb-4 border-b-2 border-purple-200 pb-2">불규칙 동사 (Irregular Verbs)</h3>
+                    <div id="stage2-irregular-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(1)">⬅️ 이전</button>
+                <button class="btn text-lg" onclick="app.goToStage(3)">다음 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage3" class="stage-container relative w-full" style="min-height: 600px;">
+            <div class="text-center mb-4 z-20 relative">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 3: 짝꿍 찾기 (Matching)</h2>
+                <p class="text-gray-600 text-lg">현재형(왼쪽)과 알맞은 과거형(오른쪽)을 클릭하여 연결하세요.</p>
+                <div class="text-xl font-bold text-blue-600 mt-2">Score: <span id="stage3-score">0</span> / 16</div>
+            </div>
+
+            <div class="relative w-full max-w-2xl mx-auto flex-grow flex items-center justify-center p-4" id="match-game-area">
+                <canvas id="matchCanvas"></canvas>
+                
+                <div class="flex justify-between w-full z-20">
+                    <div id="match-left-col" class="flex flex-col gap-2 w-1/3">
+                        <!-- Dynamically populated (Present) -->
+                    </div>
+                    <div class="w-1/3"></div> <!-- Space for lines -->
+                    <div id="match-right-col" class="flex flex-col gap-2 w-1/3">
+                        <!-- Dynamically populated (Past) -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4 z-20 relative">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(2)">⬅️ 이전</button>
+                <button class="btn text-lg" id="stage3-next-btn" style="display:none;" onclick="app.goToStage(4)">다음 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage4" class="stage-container w-full max-w-xl mx-auto">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 4: 정답 찾기 (Quiz)</h2>
+                <p class="text-gray-600 text-lg">주어진 현재형 동사의 과거형을 고르세요.</p>
+                <div class="progress-bar-container">
+                    <div id="stage4-progress" class="progress-bar"></div>
+                </div>
+                <div class="text-xl font-bold text-blue-600">Question <span id="stage4-current-q">1</span> / 16</div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg w-full">
+                <div class="flex flex-col items-center mb-6">
+                    <div id="stage4-image" class="text-6xl mb-4">🖼️</div>
+                    <h3 class="text-4xl font-extrabold text-gray-800" id="stage4-word">word</h3>
+                    <div id="stage4-korean-meaning" class="text-xl font-bold text-blue-500 mt-2 min-h-[2rem]"></div>
+                </div>
+                <div id="stage4-options" class="flex flex-col gap-2">
+                    <!-- Options populated dynamically -->
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(3)">⬅️ 이전</button>
+                <button class="btn text-lg" id="stage4-next-btn" style="display:none;" onclick="app.goToStage(5)">마지막 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage5" class="stage-container w-full max-w-2xl mx-auto">
+             <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 5: 문장 속으로 (Sentences)</h2>
+                <p class="text-gray-600 text-lg">알맞은 과거형 동사가 들어간 표현을 고르세요.</p>
+                <div class="progress-bar-container">
+                    <div id="stage5-progress" class="progress-bar"></div>
+                </div>
+                <div class="text-xl font-bold text-blue-600">Phrase <span id="stage5-current-q">1</span> / 15</div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg w-full flex flex-col items-center">
+                <div id="stage5-image" class="text-6xl mb-4">🖼️</div>
+                <div class="text-xl text-gray-500 mb-2 font-medium" id="stage5-korean">한글 뜻</div>
+                <h3 class="text-3xl font-bold text-gray-800 mb-8 text-center" id="stage5-phrase-container">
+                    <!-- Phrase with gap -->
+                </h3>
+                
+                <!-- 큰 소리로 따라 읽으세요 메시지 추가 -->
+                <div id="stage5-repeat-msg" class="text-2xl font-black text-red-500 mb-6 hidden animate-bounce text-center">
+                    큰 소리로 따라 읽으세요! 🗣️
+                </div>
+                
+                <div id="stage5-options" class="grid grid-cols-2 gap-4 w-full">
+                     <!-- Options populated dynamically -->
+                </div>
+            </div>
+
+             <div class="mt-8 flex gap-4">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(4)">⬅️ 이전</button>
+                <button class="btn text-lg" id="stage5-finish-btn" style="display:none;" onclick="app.goToStage(6)">마지막 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage6" class="stage-container w-full max-w-xl mx-auto">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 6: 철자 쓰기 (Spelling)</h2>
+                <p class="text-gray-600 text-lg">주어진 단어를 보고 알맞은 과거형 동사를 타이핑하세요.</p>
+                <div class="progress-bar-container">
+                    <div id="stage6-progress" class="progress-bar"></div>
+                </div>
+                <div class="text-xl font-bold text-blue-600">Word <span id="stage6-current-q">1</span> / 17</div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg w-full flex flex-col items-center">
+                <div id="stage6-image" class="text-6xl mb-4">🖼️</div>
+                <div id="stage6-korean-meaning" class="text-xl text-gray-500 mb-2 font-medium">한글 뜻</div>
+                <h3 class="text-4xl font-extrabold text-gray-800 mb-6 flex items-center gap-2">
+                    <span id="stage6-word">word</span>
+                    <button id="stage6-sound-btn" class="text-2xl hover:scale-110 transition-transform" title="발음 듣기">🔊</button>
+                </h3>
+                
+                <div class="flex flex-col gap-4 items-center w-full max-w-sm">
+                    <input type="text" id="stage6-input" class="w-full text-center text-3xl font-bold p-4 border-4 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors" placeholder="과거형 입력" autocomplete="off" spellcheck="false" />
+                    <button id="stage6-check-btn" class="btn text-xl w-full" onclick="app.checkStage6Answer()">정답 확인</button>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(5)">⬅️ 이전</button>
+                <button class="btn text-lg" id="stage6-next-btn" style="display:none;" onclick="app.goToStage(7)">마지막 단계로 가기 ➡️</button>
+            </div>
+        </section>
+
+        <section id="stage7" class="stage-container w-full max-w-2xl mx-auto">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Stage 7: 문장 속 철자 쓰기 (Spelling in Context)</h2>
+                <p class="text-gray-600 text-lg">문장의 빈칸에 알맞은 과거형 동사를 타이핑하세요.</p>
+                <div class="progress-bar-container">
+                    <div id="stage7-progress" class="progress-bar"></div>
+                </div>
+                <div class="text-xl font-bold text-blue-600">Phrase <span id="stage7-current-q">1</span> / 15</div>
+            </div>
+
+            <div class="bg-white p-8 rounded-2xl shadow-lg w-full flex flex-col items-center">
+                <div id="stage7-image" class="text-6xl mb-4">🖼️</div>
+                <div id="stage7-korean" class="text-xl text-gray-500 mb-2 font-medium">한글 뜻</div>
+                
+                <!-- 힌트 (현재형) - 숨겨두었다가 틀리면 표시 -->
+                <div id="stage7-hint-container" class="mb-4 flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full shadow-sm hidden">
+                    <span class="text-blue-600 font-bold">Hint (현재형): <span id="stage7-hint-word"></span></span>
+                    <button id="stage7-sound-btn" class="text-xl hover:scale-110 transition-transform" title="발음 듣기">🔊</button>
+                </div>
+
+                <h3 class="text-3xl font-bold text-gray-800 mb-8 text-center" id="stage7-phrase-container">
+                    <!-- Phrase with gap -->
+                </h3>
+                
+                <div class="flex flex-col gap-4 items-center w-full max-w-sm">
+                    <input type="text" id="stage7-input" class="w-full text-center text-3xl font-bold p-4 border-4 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none transition-colors" placeholder="과거형 입력" autocomplete="off" spellcheck="false" />
+                    <button id="stage7-check-btn" class="btn text-xl w-full" onclick="app.checkStage7Answer()">정답 확인</button>
+                </div>
+            </div>
+
+            <div class="mt-8 flex gap-4">
+                <button class="btn bg-gray-500 hover:bg-gray-600" onclick="app.goToStage(6)">⬅️ 이전</button>
+                <button class="btn text-lg bg-green-500 hover:bg-green-600" id="stage7-finish-btn" style="display:none;" onclick="app.finishGame()">축하합니다! 완료하기 🎉</button>
+            </div>
+        </section>
+        
+        <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-50 z-[100] hidden flex-col items-center justify-center backdrop-blur-sm">
+            <div class="bg-white p-8 rounded-3xl max-w-sm w-full text-center transform scale-90 transition-transform duration-300" id="modal-content">
+                <div class="text-7xl mb-4">🏆</div>
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Excellent!</h2>
+                <p class="text-gray-600 mb-6">모든 단계를 성공적으로 마쳤습니다!</p>
+                <button class="btn w-full text-lg" onclick="app.closeModal(); app.goToStage(1);">처음부터 다시하기</button>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Data Structure
+        const verbsData = [
+            { present: 'do', past: 'did', type: 'irregular', emoji: '✅', kor: '하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=do' },
+            { present: 'study', past: 'studied', type: 'regular', emoji: '📚', kor: '공부하다, 연구하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=study' },
+            { present: 'make', past: 'made', type: 'irregular', emoji: '🛠️', kor: '만들다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=make' },
+            { present: 'help', past: 'helped', type: 'regular', emoji: '🤝', kor: '돕다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=help' },
+            { present: 'write', past: 'wrote', type: 'irregular', emoji: '✍️', kor: '쓰다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=write' },
+            { present: 'build', past: 'built', type: 'irregular', emoji: '🏗️', kor: '짓다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=build' },
+            { present: 'paint', past: 'painted', type: 'regular', emoji: '🎨', kor: '그리다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=paint' },
+            { present: 'play', past: 'played', type: 'regular', emoji: '⚽', kor: '놀다, 하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=play' },
+            { present: 'like', past: 'liked', type: 'regular', emoji: '👍', kor: '좋아하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=like' },
+            { present: 'am/is', past: 'was', type: 'irregular', emoji: '👤', kor: '~이다, 있다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=am/is' },
+            { present: 'win', past: 'won', type: 'irregular', emoji: '🏆', kor: '이기다, 우승하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=win' },
+            { present: 'have', past: 'had', type: 'irregular', emoji: '🤲', kor: '가지다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=have' },
+            { present: 'show', past: 'showed', type: 'regular', emoji: '👀', kor: '보여주다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=show' },
+            { present: 'are', past: 'were', type: 'irregular', emoji: '👥', kor: '~이다, 있다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=are' },
+            { present: 'score', past: 'scored', type: 'regular', emoji: '🥅', kor: '득점하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=score' },
+            { present: 'work', past: 'worked', type: 'regular', emoji: '💼', kor: '일하다', img: 'https://placehold.co/100x100/eff6ff/3b82f6?text=work' }
+        ];
+
+        const phrasesData = [
+            { text: "Yes, I [gap].", answer: "did", kor: "네, 그랬어요.", emoji: "🙋‍♂️" },
+            { text: "[gap] the tower", answer: "built", kor: "탑을 지었다", emoji: "🗼" },
+            { text: "[gap] poor people", answer: "helped", kor: "가난한 사람들을 도왔다", emoji: "🤝" },
+            { text: "[gap] the music", answer: "wrote", kor: "그 음악을 작곡했다(썼다)", emoji: "🎼" },
+            { text: "[gap] the picture", answer: "painted", kor: "그 그림을 그렸다", emoji: "🖼️" },
+            { text: "[gap] the airplane", answer: "made", kor: "비행기를 만들었다", emoji: "✈️" },
+            { text: "[gap] animals", answer: "studied", kor: "동물들을 연구했다", emoji: "🦁" },
+            { text: "[gap] soccer", answer: "played", kor: "축구를 했다", emoji: "⚽" },
+            { text: "[gap] playing the piano", answer: "liked", kor: "피아노 치는 것을 좋아했다", emoji: "🎹" },
+            { text: "[gap] the World Cup", answer: "won", kor: "월드컵에서 우승했다", emoji: "🏆" },
+            { text: "[gap] hard times", answer: "had", kor: "힘든 시간을 보냈다", emoji: "😥" },
+            { text: "they [gap] strong", answer: "were", kor: "그들은 강했다", emoji: "💪" },
+            { text: "[gap] her feelings in her paintings", answer: "showed", kor: "그녀의 그림에 감정을 보여주었다", emoji: "🎭" },
+            { text: "[gap] over 1000 goals", answer: "scored", kor: "1000골 이상을 득점했다", emoji: "🥅" },
+            { text: "they [gap] hard", answer: "worked", kor: "그들은 열심히 일했다", emoji: "💼" }
+        ];
+
+        // Speech Synthesis Setup
+        const synth = window.speechSynthesis;
+        let englishVoice = null;
+
+        // Try to load an English voice
+        function loadVoice() {
+            const voices = synth.getVoices();
+            englishVoice = voices.find(v => v.lang.startsWith('en')) || voices[0];
+        }
+        
+        synth.onvoiceschanged = loadVoice;
+
+        function speak(text, queue = false) {
+            // 큐(queue)가 true가 아니면 현재 재생 중인 음성을 취소하고 새로 시작
+            if (!queue && synth.speaking) {
+                synth.cancel();
+            }
+            const utterance = new SpeechSynthesisUtterance(text);
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+            utterance.rate = 0.9; // Slightly slower for learning
+            synth.speak(utterance);
+        }
+
+        // Utility: Shuffle array
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex > 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        const app = {
+            currentStage: 1,
+            
+            // Stage 3 State
+            s3Items: { present: [], past: [] },
+            s3Selected: { left: null, right: null },
+            s3Matches: [],
+            s3Score: 0,
+            
+            // Stage 4 State
+            s4Questions: [],
+            s4CurrentIndex: 0,
+
+            // Stage 5 State
+            s5Questions: [],
+            s5CurrentIndex: 0,
+
+            // Stage 6 State
+            s6Questions: [],
+            s6CurrentIndex: 0,
+
+            // Stage 7 State
+            s7Questions: [],
+            s7CurrentIndex: 0,
+
+            init() {
+                loadVoice();
+                this.renderStage1();
+                this.renderStage2();
+                this.setupStage3();
+                this.setupStage4();
+                this.setupStage5();
+                this.setupStage6();
+                this.setupStage7();
+                
+                // Handle window resize for canvas redraw
+                window.addEventListener('resize', () => {
+                    if (this.currentStage === 3) this.drawLines();
+                });
+            },
+
+            updateTabs(stage) {
+                document.querySelectorAll('.nav-tab').forEach((tab, index) => {
+                    if (index + 1 === stage) {
+                        tab.classList.add('active');
+                    } else {
+                        tab.classList.remove('active');
+                    }
+                });
+            },
+
+            goToStage(stageNumber) {
+                document.querySelectorAll('.stage-container').forEach(el => el.classList.remove('active'));
+                document.getElementById(`stage${stageNumber}`).classList.add('active');
+                this.currentStage = stageNumber;
+                this.updateTabs(stageNumber);
+
+                if (stageNumber === 3) {
+                    setTimeout(() => {
+                        this.initCanvasSize();
+                        this.drawLines();
+                    }, 100);
+                }
+            },
+
+            renderStage1() {
+                const grid = document.getElementById('stage1-grid');
+                grid.innerHTML = '';
+                
+                verbsData.forEach(verb => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-4 flex flex-col items-center justify-center gap-2';
+                    card.onclick = () => {
+                        speak(verb.present);
+                        // Simple animation
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => card.style.transform = '', 100);
+                    };
+                    
+                    card.innerHTML = `
+                        <div class="text-4xl mb-2">${verb.emoji}</div>
+                        <div class="font-bold text-xl text-gray-800">${verb.present}</div>
+                        <div class="text-sm font-semibold text-blue-600 mt-1">${verb.kor}</div>
+                    `;
+                    grid.appendChild(card);
+                });
+            },
+
+            renderStage2() {
+                const regularGrid = document.getElementById('stage2-regular-grid');
+                const irregularGrid = document.getElementById('stage2-irregular-grid');
+                
+                regularGrid.innerHTML = '';
+                irregularGrid.innerHTML = '';
+
+                verbsData.forEach(verb => {
+                    const card = document.createElement('div');
+                    card.className = 'card p-4 flex items-center justify-between';
+                    card.onclick = () => {
+                        speak(verb.past);
+                        card.style.transform = 'scale(0.95)';
+                        setTimeout(() => card.style.transform = '', 100);
+                    };
+
+                    let displayPast = verb.past;
+                    if (verb.type === 'regular') {
+                        if (verb.past === 'studied') {
+                            displayPast = 'stud<span class="text-red-600 font-black">i</span><span class="font-black underline decoration-2 underline-offset-4">ed</span>';
+                        } else if (verb.past.endsWith('ed')) {
+                            displayPast = verb.past.slice(0, -2) + '<span class="font-black underline decoration-2 underline-offset-4">ed</span>';
+                        }
+                    } else {
+                        // Highlight changed parts for irregular verbs
+                        switch(verb.present) {
+                            case 'do': displayPast = 'd<span class="text-red-600 font-black">id</span>'; break;
+                            case 'make': displayPast = 'ma<span class="text-red-600 font-black">d</span>e'; break;
+                            case 'write': displayPast = 'wr<span class="text-red-600 font-black">o</span>te'; break;
+                            case 'build': displayPast = 'buil<span class="text-red-600 font-black">t</span>'; break;
+                            case 'am/is': displayPast = '<span class="text-red-600 font-black">was</span>'; break; // Entirely changed
+                            case 'win': displayPast = 'w<span class="text-red-600 font-black">o</span>n'; break;
+                            case 'have': displayPast = 'ha<span class="text-red-600 font-black">d</span>'; break;
+                            case 'are': displayPast = '<span class="text-red-600 font-black">were</span>'; break; // Entirely changed
+                            default: displayPast = verb.past;
+                        }
+                    }
+
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="text-3xl">${verb.emoji}</div>
+                            <div class="flex flex-col gap-1">
+                                <span class="text-blue-600 font-bold text-sm">${verb.present}</span>
+                                <span class="font-bold text-xl text-gray-800">${displayPast}</span>
+                            </div>
+                        </div>
+                        <div class="text-gray-300 text-xl">🔊</div>
+                    `;
+
+                    if (verb.type === 'regular') {
+                        regularGrid.appendChild(card);
+                    } else {
+                        irregularGrid.appendChild(card);
+                    }
+                });
+            },
+
+            setupStage3() {
+                const leftCol = document.getElementById('match-left-col');
+                const rightCol = document.getElementById('match-right-col');
+                
+                leftCol.innerHTML = '';
+                rightCol.innerHTML = '';
+                this.s3Score = 0;
+                this.s3Matches = [];
+                document.getElementById('stage3-score').textContent = '0';
+                document.getElementById('stage3-next-btn').style.display = 'none';
+
+                // We'll show a subset at a time or make it scrollable. Let's show all for simplicity, 
+                // but make the container handle it.
+                let presentVerbs = [...verbsData];
+                let pastVerbs = [...verbsData];
+                
+                shuffle(pastVerbs); // Randomize right side
+
+                presentVerbs.forEach((verb, i) => {
+                    // Left item (Present)
+                    const leftItem = document.createElement('div');
+                    leftItem.className = 'match-item';
+                    leftItem.textContent = verb.present;
+                    leftItem.dataset.id = `L-${verb.present}`;
+                    leftItem.dataset.val = verb.present;
+                    leftItem.onclick = (e) => this.handleMatchClick('left', leftItem, verb.present);
+                    leftCol.appendChild(leftItem);
+                    this.s3Items.present.push(leftItem);
+                });
+
+                pastVerbs.forEach((verb, i) => {
+                    // Right item (Past)
+                    const rightItem = document.createElement('div');
+                    rightItem.className = 'match-item';
+                    rightItem.textContent = verb.past;
+                    rightItem.dataset.id = `R-${verb.past}`;
+                    rightItem.dataset.val = verb.present; // Store corresponding present for check
+                    rightItem.onclick = (e) => this.handleMatchClick('right', rightItem, verb.present);
+                    rightCol.appendChild(rightItem);
+                    this.s3Items.past.push(rightItem);
+                });
+            },
+
+            handleMatchClick(side, element, value) {
+                // Ignore if already matched
+                if (element.classList.contains('matched')) return;
+
+                // Deselect previous on same side
+                if (this.s3Selected[side]) {
+                    this.s3Selected[side].classList.remove('selected');
+                }
+
+                // Select new
+                this.s3Selected[side] = element;
+                element.classList.add('selected');
+                
+                if (side === 'left') speak(element.textContent);
+                if (side === 'right') speak(element.textContent);
+
+                // Check for match if both selected
+                if (this.s3Selected.left && this.s3Selected.right) {
+                    this.checkMatch();
+                }
+            },
+
+            checkMatch() {
+                const left = this.s3Selected.left;
+                const right = this.s3Selected.right;
+
+                if (left.dataset.val === right.dataset.val) {
+                    // Match successful
+                    left.classList.remove('selected');
+                    right.classList.remove('selected');
+                    left.classList.add('matched');
+                    right.classList.add('matched');
+                    
+                    // 두 번째로 클릭한 단어 발음 뒤에 이어서 나오도록 true 전달
+                    speak("Correct!", true);
+                    confetti({
+                        particleCount: 60,
+                        spread: 70,
+                        origin: { y: 0.6 },
+                        colors: ['#10b981', '#3b82f6', '#fcd34d']
+                    });
+                    
+                    this.s3Matches.push({ left: left, right: right });
+                    this.s3Score++;
+                    document.getElementById('stage3-score').textContent = this.s3Score;
+
+                    if (this.s3Score === verbsData.length) {
+                        document.getElementById('stage3-next-btn').style.display = 'block';
+                    }
+                } else {
+                    // Match failed
+                    // 두 번째로 클릭한 단어 발음 뒤에 이어서 나오도록 true 전달
+                    speak("Try again!", true);
+                    left.classList.add('bg-red-100', 'border-red-500');
+                    right.classList.add('bg-red-100', 'border-red-500');
+                    setTimeout(() => {
+                        left.classList.remove('selected', 'bg-red-100', 'border-red-500');
+                        right.classList.remove('selected', 'bg-red-100', 'border-red-500');
+                    }, 500);
+                }
+
+                this.s3Selected.left = null;
+                this.s3Selected.right = null;
+                this.drawLines();
+            },
+
+            initCanvasSize() {
+                const canvas = document.getElementById('matchCanvas');
+                const area = document.getElementById('match-game-area');
+                canvas.width = area.offsetWidth;
+                canvas.height = area.offsetHeight;
+            },
+
+            drawLines() {
+                const canvas = document.getElementById('matchCanvas');
+                if(!canvas) return;
+                const ctx = canvas.getContext('2d');
+                const areaBounds = document.getElementById('match-game-area').getBoundingClientRect();
+                
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 3;
+                ctx.strokeStyle = '#10b981'; // Green for matches
+
+                this.s3Matches.forEach(match => {
+                    const lBounds = match.left.getBoundingClientRect();
+                    const rBounds = match.right.getBoundingClientRect();
+
+                    const startX = lBounds.right - areaBounds.left;
+                    const startY = lBounds.top + (lBounds.height / 2) - areaBounds.top;
+                    
+                    const endX = rBounds.left - areaBounds.left;
+                    const endY = rBounds.top + (rBounds.height / 2) - areaBounds.top;
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    // Bezier curve for nice look
+                    ctx.bezierCurveTo(startX + 50, startY, endX - 50, endY, endX, endY);
+                    ctx.stroke();
+                });
+            },
+
+            setupStage4() {
+                this.s4Questions = shuffle([...verbsData]);
+                this.s4CurrentIndex = 0;
+                document.getElementById('stage4-next-btn').style.display = 'none';
+                this.renderStage4Question();
+            },
+
+            renderStage4Question() {
+                if (this.s4CurrentIndex >= this.s4Questions.length) {
+                    document.getElementById('stage4-next-btn').style.display = 'block';
+                    return;
+                }
+
+                const q = this.s4Questions[this.s4CurrentIndex];
+                
+                document.getElementById('stage4-current-q').textContent = this.s4CurrentIndex + 1;
+                document.getElementById('stage4-progress').style.width = `${((this.s4CurrentIndex) / this.s4Questions.length) * 100}%`;
+                
+                document.getElementById('stage4-word').textContent = q.present;
+                document.getElementById('stage4-image').textContent = q.emoji;
+                document.getElementById('stage4-korean-meaning').textContent = ''; // 새로운 문제 시 뜻 숨기기
+                speak(q.present);
+
+                // Generate options (1 correct, 3 wrong)
+                let options = [q.past];
+                let wrongPool = verbsData.filter(v => v.past !== q.past).map(v => v.past);
+                wrongPool = shuffle(wrongPool);
+                options.push(wrongPool[0], wrongPool[1], wrongPool[2]);
+                options = shuffle(options);
+
+                const optsContainer = document.getElementById('stage4-options');
+                optsContainer.innerHTML = '';
+
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn';
+                    btn.textContent = opt;
+                    btn.onclick = () => this.handleStage4Answer(btn, opt === q.past, opt, q);
+                    optsContainer.appendChild(btn);
+                });
+            },
+
+            handleStage4Answer(btn, isCorrect, clickedWord, q) {
+                const buttons = document.querySelectorAll('#stage4-options .option-btn');
+                buttons.forEach(b => b.disabled = true);
+
+                // 클릭한 단어 먼저 발음하고, 화면에 한글 뜻 표시
+                speak(clickedWord);
+                document.getElementById('stage4-korean-meaning').textContent = q.kor;
+
+                if (isCorrect) {
+                    btn.classList.add('correct');
+                    speak("Good job!", true); // 클릭한 단어 발음 후에 이어서 재생
+                    setTimeout(() => {
+                        this.s4CurrentIndex++;
+                        this.renderStage4Question();
+                    }, 4000); // 발음과 뜻을 확인할 수 있도록 딜레이를 4초로 증가 (기존 2초의 2배)
+                } else {
+                    btn.classList.add('wrong');
+                    speak("Try again", true); // 클릭한 단어 발음 후에 이어서 재생
+                    setTimeout(() => {
+                        buttons.forEach(b => {
+                            b.disabled = false;
+                            b.classList.remove('wrong');
+                        });
+                    }, 1500);
+                }
+            },
+
+            setupStage5() {
+                this.s5Questions = shuffle([...phrasesData]);
+                this.s5CurrentIndex = 0;
+                document.getElementById('stage5-finish-btn').style.display = 'none';
+                this.renderStage5Question();
+            },
+
+            renderStage5Question() {
+                 if (this.s5CurrentIndex >= this.s5Questions.length) {
+                    document.getElementById('stage5-finish-btn').style.display = 'block';
+                    document.getElementById('stage5-progress').style.width = '100%';
+                    return;
+                }
+
+                const q = this.s5Questions[this.s5CurrentIndex];
+                
+                document.getElementById('stage5-current-q').textContent = this.s5CurrentIndex + 1;
+                document.getElementById('stage5-progress').style.width = `${((this.s5CurrentIndex) / this.s5Questions.length) * 100}%`;
+                
+                document.getElementById('stage5-image').textContent = q.emoji;
+                document.getElementById('stage5-korean').textContent = q.kor;
+                
+                const phraseContainer = document.getElementById('stage5-phrase-container');
+                // Replace [gap] with an empty span for styling
+                const phraseHtml = q.text.replace('[gap]', '<span class="inline-block w-24 h-10 border-b-4 border-gray-400 mx-2 text-blue-600"></span>');
+                phraseContainer.innerHTML = phraseHtml;
+
+                // 다음 문제 시 따라 읽기 메시지 숨기기
+                const msgElement = document.getElementById('stage5-repeat-msg');
+                if (msgElement) {
+                    msgElement.classList.add('hidden');
+                }
+
+                // Options (1 correct, 3 random past verbs from verbsData)
+                let options = [q.answer];
+                let wrongPool = verbsData.map(v=>v.past).filter(v => v !== q.answer);
+                wrongPool = shuffle(wrongPool);
+                options.push(wrongPool[0], wrongPool[1], wrongPool[2]);
+                options = shuffle(options);
+
+                const optsContainer = document.getElementById('stage5-options');
+                optsContainer.innerHTML = '';
+
+                options.forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.className = 'option-btn !mb-0';
+                    btn.textContent = opt;
+                    btn.onclick = () => this.handleStage5Answer(btn, opt === q.answer, q);
+                    optsContainer.appendChild(btn);
+                });
+            },
+
+            handleStage5Answer(btn, isCorrect, q) {
+                 const buttons = document.querySelectorAll('#stage5-options .option-btn');
+                buttons.forEach(b => b.disabled = true);
+
+                if (isCorrect) {
+                    btn.classList.add('correct');
+                    // Fill gap
+                    const phraseContainer = document.getElementById('stage5-phrase-container');
+                    phraseContainer.innerHTML = q.text.replace('[gap]', `<span class="text-green-600 font-extrabold underline decoration-4 underline-offset-4">${q.answer}</span>`);
+                    
+                    // 큰 소리로 따라 읽으세요 메시지 표시
+                    const msgElement = document.getElementById('stage5-repeat-msg');
+                    if (msgElement) {
+                        msgElement.classList.remove('hidden');
+                    }
+                    
+                    const fullSentence = q.text.replace('[gap]', q.answer);
+                    
+                    // 문장 길이에 따라 대기 시간 설정 (18자 초과면 10초, 이하면 5초)
+                    const waitTime = fullSentence.length > 18 ? 10000 : 5000;
+
+                    // 첫 번째 발음
+                    speak(fullSentence);
+                    
+                    // 두 번째 발음
+                    setTimeout(() => {
+                        speak(fullSentence);
+                    }, waitTime);
+
+                    // 세 번째 발음
+                    setTimeout(() => {
+                        speak(fullSentence);
+                    }, waitTime * 2);
+
+                    // 지정된 대기 시간이 3번 지나간 후 다음 문제로 이동
+                    setTimeout(() => {
+                        this.s5CurrentIndex++;
+                        this.renderStage5Question();
+                    }, waitTime * 3);
+                } else {
+                    btn.classList.add('wrong');
+                    speak("Try again!");
+                    setTimeout(() => {
+                        buttons.forEach(b => {
+                            b.disabled = false;
+                            b.classList.remove('wrong');
+                        });
+                    }, 1500);
+                }
+            },
+
+            setupStage6() {
+                this.s6Questions = shuffle([...verbsData]);
+                this.s6CurrentIndex = 0;
+                document.getElementById('stage6-next-btn').style.display = 'none';
+                
+                // 엔터키를 누르면 정답 확인 버튼 클릭과 동일하게 동작
+                const inputField = document.getElementById('stage6-input');
+                inputField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.checkStage6Answer();
+                    }
+                });
+
+                this.renderStage6Question();
+            },
+
+            renderStage6Question() {
+                if (this.s6CurrentIndex >= this.s6Questions.length) {
+                    document.getElementById('stage6-next-btn').style.display = 'block';
+                    document.getElementById('stage6-progress').style.width = '100%';
+                    document.getElementById('stage6-check-btn').disabled = true;
+                    document.getElementById('stage6-input').disabled = true;
+                    return;
+                }
+
+                const q = this.s6Questions[this.s6CurrentIndex];
+                
+                document.getElementById('stage6-current-q').textContent = this.s6CurrentIndex + 1;
+                document.getElementById('stage6-progress').style.width = `${((this.s6CurrentIndex) / this.s6Questions.length) * 100}%`;
+                
+                document.getElementById('stage6-image').textContent = q.emoji;
+                document.getElementById('stage6-korean-meaning').textContent = q.kor;
+                document.getElementById('stage6-word').textContent = q.present;
+                
+                // 소리 아이콘 클릭 시 현재형 발음
+                const soundBtn = document.getElementById('stage6-sound-btn');
+                soundBtn.onclick = () => speak(q.present);
+
+                // 문제 시작 시 현재형 단어 발음
+                speak(q.present);
+
+                // 인풋창 초기화
+                const inputField = document.getElementById('stage6-input');
+                inputField.value = '';
+                inputField.disabled = false;
+                inputField.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
+                inputField.classList.add('border-gray-200');
+                inputField.focus(); // 모바일 환경을 제외하고 자동으로 포커스
+
+                const checkBtn = document.getElementById('stage6-check-btn');
+                checkBtn.disabled = false;
+            },
+
+            checkStage6Answer() {
+                const inputField = document.getElementById('stage6-input');
+                const checkBtn = document.getElementById('stage6-check-btn');
+                const userAnswer = inputField.value.trim().toLowerCase(); // 공백 제거 및 소문자 변환
+                const q = this.s6Questions[this.s6CurrentIndex];
+
+                // 정답 확인 버튼이 비활성화 되어있다면 무시
+                if (checkBtn.disabled) return;
+
+                if (userAnswer === q.past.toLowerCase()) {
+                    // 정답일 때
+                    inputField.disabled = true;
+                    checkBtn.disabled = true;
+                    
+                    inputField.classList.remove('border-gray-200', 'border-red-500', 'bg-red-50');
+                    inputField.classList.add('border-green-500', 'bg-green-50');
+                    
+                    speak(q.past); // 과거형 발음
+                    speak("Excellent!", true); // 이어서 Excellent 발음
+                    
+                    confetti({
+                        particleCount: 80,
+                        spread: 80,
+                        origin: { y: 0.6 },
+                        colors: ['#10b981', '#3b82f6', '#fcd34d', '#ec4899']
+                    });
+
+                    setTimeout(() => {
+                        this.s6CurrentIndex++;
+                        this.renderStage6Question();
+                    }, 3000); // 3초 대기 후 다음 문제
+                } else {
+                    // 오답일 때
+                    inputField.classList.remove('border-gray-200');
+                    inputField.classList.add('border-red-500', 'bg-red-50');
+                    speak("Try again!");
+                    
+                    // 입력창 좌우로 흔들리는 애니메이션 효과
+                    inputField.style.transform = 'translateX(-10px)';
+                    setTimeout(() => inputField.style.transform = 'translateX(10px)', 50);
+                    setTimeout(() => inputField.style.transform = 'translateX(-10px)', 100);
+                    setTimeout(() => inputField.style.transform = 'translateX(10px)', 150);
+                    setTimeout(() => inputField.style.transform = 'translateX(0)', 200);
+
+                    setTimeout(() => {
+                        inputField.classList.remove('border-red-500', 'bg-red-50');
+                        inputField.classList.add('border-gray-200');
+                        inputField.focus(); // 다시 입력할 수 있도록 포커스
+                    }, 1000);
+                }
+            },
+
+            setupStage7() {
+                this.s7Questions = shuffle([...phrasesData]);
+                this.s7CurrentIndex = 0;
+                document.getElementById('stage7-finish-btn').style.display = 'none';
+                
+                // 기존 이벤트 리스너 제거 및 엔터키 이벤트 추가
+                const inputField = document.getElementById('stage7-input');
+                const newField = inputField.cloneNode(true);
+                inputField.parentNode.replaceChild(newField, inputField);
+                
+                newField.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        this.checkStage7Answer();
+                    }
+                });
+
+                this.renderStage7Question();
+            },
+
+            renderStage7Question() {
+                if (this.s7CurrentIndex >= this.s7Questions.length) {
+                    document.getElementById('stage7-finish-btn').style.display = 'block';
+                    document.getElementById('stage7-progress').style.width = '100%';
+                    document.getElementById('stage7-check-btn').disabled = true;
+                    document.getElementById('stage7-input').disabled = true;
+                    return;
+                }
+
+                const q = this.s7Questions[this.s7CurrentIndex];
+                const verbInfo = verbsData.find(v => v.past === q.answer); // 현재형 동사 정보 찾기
+                
+                document.getElementById('stage7-current-q').textContent = this.s7CurrentIndex + 1;
+                document.getElementById('stage7-progress').style.width = `${((this.s7CurrentIndex) / this.s7Questions.length) * 100}%`;
+                
+                document.getElementById('stage7-image').textContent = q.emoji;
+                document.getElementById('stage7-korean').textContent = q.kor;
+                document.getElementById('stage7-hint-word').textContent = verbInfo.present;
+                
+                const phraseContainer = document.getElementById('stage7-phrase-container');
+                // 빈칸 처리
+                const phraseHtml = q.text.replace('[gap]', '<span class="inline-block w-28 h-12 border-b-4 border-gray-400 mx-2 text-blue-600 align-bottom"></span>');
+                phraseContainer.innerHTML = phraseHtml;
+
+                // 새로운 문제가 시작될 때 힌트 숨기기
+                document.getElementById('stage7-hint-container').classList.add('hidden');
+
+                // 힌트 소리 버튼 클릭 시 현재형 발음
+                const soundBtn = document.getElementById('stage7-sound-btn');
+                soundBtn.onclick = () => speak(verbInfo.present);
+
+                // 인풋창 초기화
+                const inputField = document.getElementById('stage7-input');
+                inputField.value = '';
+                inputField.disabled = false;
+                inputField.classList.remove('border-green-500', 'bg-green-50', 'border-red-500', 'bg-red-50');
+                inputField.classList.add('border-gray-200');
+                inputField.focus();
+
+                const checkBtn = document.getElementById('stage7-check-btn');
+                checkBtn.disabled = false;
+            },
+
+            checkStage7Answer() {
+                const inputField = document.getElementById('stage7-input');
+                const checkBtn = document.getElementById('stage7-check-btn');
+                const userAnswer = inputField.value.trim().toLowerCase();
+                const q = this.s7Questions[this.s7CurrentIndex];
+
+                if (checkBtn.disabled) return;
+
+                if (userAnswer === q.answer.toLowerCase()) {
+                    // 정답일 때
+                    inputField.disabled = true;
+                    checkBtn.disabled = true;
+                    
+                    inputField.classList.remove('border-gray-200', 'border-red-500', 'bg-red-50');
+                    inputField.classList.add('border-green-500', 'bg-green-50');
+                    
+                    // 빈칸 채워주기
+                    const phraseContainer = document.getElementById('stage7-phrase-container');
+                    phraseContainer.innerHTML = q.text.replace('[gap]', `<span class="text-green-600 font-extrabold underline decoration-4 underline-offset-4">${q.answer}</span>`);
+                    
+                    const fullSentence = q.text.replace('[gap]', q.answer);
+
+                    speak("Awesome!"); // 첫 음성
+                    speak(fullSentence, true); // 큐에 넣어서 이어서 문장 전체 발음
+                    
+                    confetti({
+                        particleCount: 100,
+                        spread: 90,
+                        origin: { y: 0.6 },
+                        colors: ['#10b981', '#3b82f6', '#fcd34d', '#8b5cf6']
+                    });
+
+                    setTimeout(() => {
+                        this.s7CurrentIndex++;
+                        this.renderStage7Question();
+                    }, 4000); // 4초 대기 후 다음 문제
+                } else {
+                    // 오답일 때
+                    inputField.classList.remove('border-gray-200');
+                    inputField.classList.add('border-red-500', 'bg-red-50');
+                    speak("Try again!");
+                    
+                    // 정답을 맞추지 못했을 때 힌트 컨테이너 표시
+                    document.getElementById('stage7-hint-container').classList.remove('hidden');
+                    
+                    // 흔들기 애니메이션
+                    inputField.style.transform = 'translateX(-10px)';
+                    setTimeout(() => inputField.style.transform = 'translateX(10px)', 50);
+                    setTimeout(() => inputField.style.transform = 'translateX(-10px)', 100);
+                    setTimeout(() => inputField.style.transform = 'translateX(10px)', 150);
+                    setTimeout(() => inputField.style.transform = 'translateX(0)', 200);
+
+                    setTimeout(() => {
+                        inputField.classList.remove('border-red-500', 'bg-red-50');
+                        inputField.classList.add('border-gray-200');
+                        inputField.focus();
+                    }, 1000);
+                }
+            },
+
+            finishGame() {
+                const modal = document.getElementById('success-modal');
+                const content = document.getElementById('modal-content');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    content.classList.remove('scale-90');
+                    content.classList.add('scale-100');
+                }, 10);
+                speak("Congratulations! You finished the Verb Explorer journey!");
+            },
+
+            closeModal() {
+                const modal = document.getElementById('success-modal');
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                // Reset all states
+                this.setupStage3();
+                this.setupStage4();
+                this.setupStage5();
+                this.setupStage6();
+                this.setupStage7();
+            }
+        };
+
+        // Initialize on load
+        window.onload = () => {
+            app.init();
+        };
+
+    </script>
+</body>
+</html>
